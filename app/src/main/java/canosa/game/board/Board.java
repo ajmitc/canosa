@@ -4,7 +4,11 @@ import canosa.game.Piece;
 import canosa.game.PieceType;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -66,6 +70,70 @@ public class Board {
         int y1 = cell1.getY();
         int y2 = cell2.getY();
         return Math.abs(x2 - x1) + Math.abs(y2 - y1);
+    }
+
+    public Set<Cell> getNeighboringCells(Cell cell, boolean incDiagonal){
+        Set<Cell> neighbors = new HashSet<>();
+        Cell neighbor = getCell(cell.getX() - 1, cell.getY());
+        if (neighbor != null) neighbors.add(neighbor);
+        neighbor = getCell(cell.getX() + 1, cell.getY());
+        if (neighbor != null) neighbors.add(neighbor);
+        neighbor = getCell(cell.getX(), cell.getY() - 1);
+        if (neighbor != null) neighbors.add(neighbor);
+        neighbor = getCell(cell.getX(), cell.getY() + 1);
+        if (neighbor != null) neighbors.add(neighbor);
+        if (incDiagonal){
+            neighbor = getCell(cell.getX() - 1, cell.getY() - 1);
+            if (neighbor != null) neighbors.add(neighbor);
+            neighbor = getCell(cell.getX() + 1, cell.getY() - 1);
+            if (neighbor != null) neighbors.add(neighbor);
+            neighbor = getCell(cell.getX() - 1, cell.getY() + 1);
+            if (neighbor != null) neighbors.add(neighbor);
+            neighbor = getCell(cell.getX() + 1, cell.getY() + 1);
+            if (neighbor != null) neighbors.add(neighbor);
+        }
+        return neighbors;
+    }
+
+    public List<Cell> findShortestPath(Cell fromCell, Cell toCell){
+        return findShortestPath(fromCell, toCell, false);
+    }
+
+    public List<Cell> findShortestPath(Cell fromCell, Cell toCell, boolean mustMoveTowardEnd){
+        return AStarAlgorithm.findShortestPath(fromCell, toCell, this, mustMoveTowardEnd);
+    }
+
+    public List<Cell> findClosestUncontrolledSailors(Cell fromCell){
+        List<Cell> closest = new ArrayList<>();
+        cells.stream()
+                .filter(c -> c.getPiece() != null && c.getPiece().getType() == PieceType.SAILOR)
+                .filter(c -> c.getPiece().peekTopRing() == null || c.getPiece().peekTopRing() != fromCell.getPiece().getType())
+                .filter(c -> c.getPiece().getRings().size() < 3)
+                .sorted((c1, c2) -> getDistanceBetween(c1, c2))
+                .collect(Collectors.toList());
+        return closest;
+    }
+
+    public List<Cell> findFarthestControlledSailors(Cell fromCell){
+        List<Cell> farthest =
+            cells.stream()
+                .filter(c -> c.getPiece() != null && c.getPiece().getType() == PieceType.SAILOR)
+                .filter(c -> c.getPiece().peekTopRing() == fromCell.getPiece().getType())
+                .sorted((c1, c2) -> {
+                    int d1 = getDistanceBetween(fromCell, c1);
+                    int d2 = getDistanceBetween(fromCell, c2);
+                    return d1 > d2? -1: d1 < d2? 1: 0;
+                })
+                .collect(Collectors.toList());
+        return farthest;
+    }
+
+    public Cell getSirenCell(PieceType type){
+        Optional<Cell> cell = 
+                cells.stream()
+                        .filter(c -> c.getPiece() != null && c.getPiece().getType() == type)
+                        .findFirst();
+        return cell.isPresent()? cell.get(): null;
     }
 
     public Piece findPieceWithType(PieceType type){

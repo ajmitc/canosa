@@ -1,5 +1,6 @@
 package canosa;
 
+import canosa.ai.ComputerPlayer;
 import canosa.game.Game;
 import canosa.game.board.Cell;
 
@@ -10,6 +11,7 @@ import canosa.game.board.Cell;
 public class Model {
     private Game game;
     private Cell selectedCell;
+    private ComputerPlayer computerPlayer;
 
     public Model(){
         game = new Game();
@@ -29,5 +31,13 @@ public class Model {
 
     public void setSelectedCell(Cell selectedCell) {
         this.selectedCell = selectedCell;
+    }
+
+    public ComputerPlayer getComputerPlayer() {
+        return computerPlayer;
+    }
+
+    public void setComputerPlayer(ComputerPlayer computerPlayer) {
+        this.computerPlayer = computerPlayer;
     }
 }

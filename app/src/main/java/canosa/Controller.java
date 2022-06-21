@@ -1,5 +1,8 @@
 package canosa;
 
+import canosa.game.Action;
+import canosa.ai.EasyComputerPlayer;
+import canosa.game.ActionType;
 import canosa.game.Phase;
 import canosa.game.PhaseStep;
 import canosa.game.Piece;
@@ -62,6 +65,10 @@ public class Controller {
         this.model = model;
         this.view = view;
 
+        // Create an Easy opponent to play the silver siren
+        model.setComputerPlayer(new EasyComputerPlayer(model, view));
+        model.getComputerPlayer().setSiren(PieceType.SILVER_SIREN);
+
         view.getMainmenu().getBtnExit().addActionListener(new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -90,7 +97,7 @@ public class Controller {
                 super.mouseClicked(e);
 
                 Cell newSelectedCell = view.getGamePanel().getSelectedCell(e.getX(), e.getY());
-                logger.info("New selected cell: " + newSelectedCell);
+                //logger.info("New selected cell: " + newSelectedCell);
 
                 // If the user didn't select a cell, do nothing
                 if (newSelectedCell == null)
@@ -103,10 +110,10 @@ public class Controller {
                         logger.info("Selected cell already has piece or is island");
                         return;
                     }
-                    logger.info("   Bumping Siren at " + defendingSirenCell + " to " + newSelectedCell);
-                    newSelectedCell.setPiece(defendingSirenCell.getPiece());
-                    defendingSirenCell.setPiece(model.getSelectedCell().getPiece());
-                    model.getSelectedCell().setPiece(null);
+                    //newSelectedCell.setPiece(defendingSirenCell.getPiece());
+                    //defendingSirenCell.setPiece(model.getSelectedCell().getPiece());
+                    //model.getSelectedCell().setPiece(null);
+                    executeAttackOpponent(new Action(ActionType.ATTACK_OPPONENT, model.getSelectedCell(), defendingSirenCell, newSelectedCell));
                     actionsTaken += 1;
                     model.setSelectedCell(null);
                     defendingSirenCell = null;
@@ -148,11 +155,9 @@ public class Controller {
 
                         // If player selected empty adjacent space = Move siren
                         if (newSelectedCell.getPiece() == null && newSelectedCell.getIslandOwner() == null){
-                            logger.info("Moving siren to " + newSelectedCell);
-                            newSelectedCell.setPiece(model.getSelectedCell().getPiece());
-                            model.getSelectedCell().setPiece(null);
-                            actionsTaken += 1;
+                            executeMoveSiren(new Action(ActionType.MOVE_SIREN, model.getSelectedCell(), newSelectedCell));
                             model.setSelectedCell(null);
+                            actionsTaken += 1;
                             run();
                             return;
                         }
@@ -173,9 +178,9 @@ public class Controller {
                                 // Newly selected piece is sailor
                                 if (model.getSelectedCell().getPiece().getRings().size() > 0 && newSelectedCell.getPiece().getRings().size() < 3){
                                     // Transfer a ring to the sailor
-                                    logger.info("Transferring ring from siren to sailor at " + model.getSelectedCell());
-                                    PieceType ring = model.getSelectedCell().getPiece().getRings().pop();
-                                    newSelectedCell.getPiece().getRings().push(ring);
+                                    //PieceType ring = model.getSelectedCell().getPiece().getRings().pop();
+                                    //newSelectedCell.getPiece().getRings().push(ring);
+                                    executeTransferRingToSailor(new Action(ActionType.TRANSFER_RING_TO_SAILOR, model.getSelectedCell(), newSelectedCell));
                                     actionsTaken += 1;
                                     model.setSelectedCell(null);
                                     run();
@@ -194,32 +199,9 @@ public class Controller {
                             if (model.getGame().getBoard().isOrthogonallyAdjacent(model.getSelectedCell(), newSelectedCell) && 
                                     model.getGame().getBoard().isCloserToIsland(model.getSelectedCell(), newSelectedCell, model.getSelectedCell().getPiece().peekTopRing())){
                                 if (newSelectedCell.getIslandOwner() == null || newSelectedCell.getIslandOwner() == currentPlayer){
-                                    logger.info("Moving sailor to " + newSelectedCell);
-                                    newSelectedCell.setPiece(model.getSelectedCell().getPiece());
-                                    model.getSelectedCell().setPiece(null);
-                                    view.getGamePanel().refresh();
-                                    if (newSelectedCell.getIslandOwner() == model.getGame().getCurrentPlayer()){
-                                        logger.info("Scoring sailor");
-                                        // Score sailor
-                                        if (newSelectedCell.getPiece().peekTopRing() == PieceType.GOLD_SIREN)
-                                            model.getGame().adjGoldSailorsScored(1);
-                                        else if (newSelectedCell.getPiece().peekTopRing() == PieceType.SILVER_SIREN)
-                                            model.getGame().adjSilverSailorsScored(1);
-                                        // Return 1 ring to each player, the rest are lost
-                                        Optional<PieceType> goldRing = 
-                                                newSelectedCell.getPiece().getRings().stream().filter(ring -> ring == PieceType.GOLD_SIREN).findFirst();
-                                        Optional<PieceType> silverRing = 
-                                                newSelectedCell.getPiece().getRings().stream().filter(ring -> ring == PieceType.SILVER_SIREN).findFirst();
-                                        if (goldRing.isPresent()){
-                                            Piece goldSiren = model.getGame().getBoard().findPieceWithType(PieceType.GOLD_SIREN);
-                                            goldSiren.pushRing(goldRing.get());
-                                        }
-                                        if (silverRing.isPresent()){
-                                            Piece silverSiren = model.getGame().getBoard().findPieceWithType(PieceType.SILVER_SIREN);
-                                            silverSiren.pushRing(silverRing.get());
-                                        }
-                                        newSelectedCell.setPiece(null);
-                                    }
+                                    //newSelectedCell.setPiece(model.getSelectedCell().getPiece());
+                                    //model.getSelectedCell().setPiece(null);
+                                    executeMoveSailor(new Action(ActionType.MOVE_SAILOR, model.getSelectedCell(), newSelectedCell));
                                     actionsTaken += 1;
                                     model.setSelectedCell(null);
                                     run();
@@ -232,9 +214,9 @@ public class Controller {
                         if (newSelectedCell.getPiece() != null && newSelectedCell.getPiece().getType() == currentPlayer){
                             if (newSelectedCell.getPiece().getRings().size() < 3 && model.getSelectedCell().getPiece().peekTopRing() == currentPlayer){
                                 // Move top ring to siren
-                                logger.info("Moving ring from sailor to siren at " + newSelectedCell);
-                                PieceType ring = model.getSelectedCell().getPiece().popRing();
-                                newSelectedCell.getPiece().pushRing(ring);
+                                //PieceType ring = model.getSelectedCell().getPiece().popRing();
+                                //newSelectedCell.getPiece().pushRing(ring);
+                                executeTransferRingToSiren(new Action(ActionType.TRANSFER_RING_TO_SIREN, model.getSelectedCell(), newSelectedCell));
                                 actionsTaken += 1;
                                 model.setSelectedCell(null);
                                 run();
@@ -264,6 +246,9 @@ public class Controller {
                         }
                         case END_PHASE: {
                             model.getGame().setPhase(Phase.PLAY);
+                            if (model.getComputerPlayer() != null){
+                                model.getComputerPlayer().getReady();
+                            }
                             break;
                         }
                     }
@@ -272,19 +257,36 @@ public class Controller {
                 case PLAY: {
                     switch(model.getGame().getPhaseStep()){
                         case START_PHASE: {
+                            actionsTaken = 0;
+                            model.getGame().setPhaseStep(PhaseStep.PLAY_ACTIONS);
+                            logger.info("Player's Turn: " + model.getGame().getCurrentPlayer());
+                            break;
+                        }
+                        case PLAY_ACTIONS: {
+                            scoreSailors();
+
                             if (actionsTaken >= 2){
                                 model.getGame().setPhaseStep(PhaseStep.END_PHASE);
                                 break;
                             }
+
+                            if (model.getComputerPlayer() != null && model.getComputerPlayer().getSiren() == model.getGame().getCurrentPlayer()){
+                                Action action = model.getComputerPlayer().chooseAction();
+                                executeAction(action);
+                                actionsTaken += 1;
+                                break;
+                            }
+
                             // Wait for player to take action
                             return;
                         }
                         case END_PHASE: {
+                            // Switch player
                             model.getGame().setCurrentPlayer(
                                     model.getGame().getCurrentPlayer() == PieceType.GOLD_SIREN? 
                                             PieceType.SILVER_SIREN: 
                                             PieceType.GOLD_SIREN);
-                            actionsTaken = 0;
+                            // Restart Phase
                             model.getGame().setPhaseStep(PhaseStep.START_PHASE);
                             break;
                         }
@@ -307,5 +309,103 @@ public class Controller {
             model.getGame().setPhase(Phase.GAMEOVER);
             ViewUtil.popupNotify("Game Over: " + (goldPlayerWins? "Gold": "Silver") + " player wins!");
         }
+    }
+
+    private void scoreSailors(){
+        Cell goldCell   = model.getGame().getBoard().getIslandCell(PieceType.GOLD_SIREN);
+        Cell silverCell = model.getGame().getBoard().getIslandCell(PieceType.SILVER_SIREN);
+        scoreSailor(goldCell);
+        scoreSailor(silverCell);
+    }
+
+    private void scoreSailor(Cell cell){
+        if (cell.getPiece() != null && cell.getPiece().getType() == PieceType.SAILOR){
+            logger.info("Scoring sailor");
+            // Score sailor
+            if (cell.getPiece().peekTopRing() == PieceType.GOLD_SIREN)
+                model.getGame().adjGoldSailorsScored(1);
+            else
+                model.getGame().adjSilverSailorsScored(1);
+            // Return 1 ring to each player, the rest are lost
+            Optional<PieceType> goldRing =
+                    cell.getPiece().getRings().stream().filter(ring -> ring == PieceType.GOLD_SIREN).findFirst();
+            Optional<PieceType> silverRing =
+                    cell.getPiece().getRings().stream().filter(ring -> ring == PieceType.SILVER_SIREN).findFirst();
+            if (goldRing.isPresent()){
+                Piece goldSiren = model.getGame().getBoard().findPieceWithType(PieceType.GOLD_SIREN);
+                goldSiren.pushRing(goldRing.get());
+            }
+            if (silverRing.isPresent()){
+                Piece silverSiren = model.getGame().getBoard().findPieceWithType(PieceType.SILVER_SIREN);
+                silverSiren.pushRing(silverRing.get());
+            }
+            cell.setPiece(null);
+        }
+    }
+
+    protected void executeAction(Action action){
+        switch(action.getType()){
+            case MOVE_SIREN:{
+                executeMoveSiren(action);
+                break;
+            }
+            case ATTACK_OPPONENT: {
+                executeAttackOpponent(action);
+                break;
+            }
+            case TRANSFER_RING_TO_SAILOR: {
+                executeTransferRingToSailor(action);
+                break;
+            }
+            case TRANSFER_RING_TO_SIREN: {
+                executeTransferRingToSiren(action);
+                break;
+            }
+            case MOVE_SAILOR:{
+                executeMoveSailor(action);
+                break;
+            }
+        }
+        view.getGamePanel().refresh();
+    }
+
+    protected void executeMoveSiren(Action action){
+        Cell source = action.getSourceCell();
+        Cell target = action.getTargetCell();
+        logger.info("Moving siren from " + source + " to " + target);
+        target.setPiece(source.getPiece());
+        source.setPiece(null);
+    }
+
+    protected void executeAttackOpponent(Action action){
+        Cell source = action.getSourceCell();
+        Cell target = action.getTargetCell();
+        Cell bumpTarget = action.getBumpTargetCell();
+        logger.info("Bumping Siren at " + target + " to " + bumpTarget);
+        bumpTarget.setPiece(target.getPiece());
+        target.setPiece(source.getPiece());
+        source.setPiece(null);
+    }
+
+    protected void executeTransferRingToSailor(Action action){
+        Cell source = action.getSourceCell();
+        Cell target = action.getTargetCell();
+        logger.info("Transferring ring from siren to sailor at " + target);
+        target.getPiece().pushRing(source.getPiece().popRing());
+    }
+
+    protected void executeTransferRingToSiren(Action action){
+        Cell source = action.getSourceCell();
+        Cell target = action.getTargetCell();
+        logger.info("Transferring ring from sailor at " + source + " to siren at " + target);
+        target.getPiece().pushRing(source.getPiece().popRing());
+    }
+
+    protected void executeMoveSailor(Action action){
+        Cell source = action.getSourceCell();
+        Cell target = action.getTargetCell();
+        logger.info("Moving sailor at " + source + " to " + target);
+        target.setPiece(source.getPiece());
+        source.setPiece(null);
     }
 }

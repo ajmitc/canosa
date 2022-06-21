@@ -6,5 +6,7 @@ package canosa.game;
  */
 public enum PhaseStep {
     START_PHASE,
-    END_PHASE
+    END_PHASE,
+
+    PLAY_ACTIONS,
 }
